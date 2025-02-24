@@ -1,0 +1,24 @@
+{
+  "name": "slack-exporter",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node src/main.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@slack/web-api": "^7.8.0",
+    "csv-writer": "^1.6.0",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.5",
+    "@types/node-fetch": "^2.6.12",
+    "node-fetch": "^2.7.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
+  }
+}
