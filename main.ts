@@ -50,7 +50,7 @@ async function main(channelId: string) {
   await fs.promises.mkdir(dirHistory, { recursive: true });
   await fs.promises.mkdir(dirFiles, { recursive: true });
 
-  // チャット履歴のエクスポート
+  // チャット履歴 CSV データの初期化
   const csvPath = path.join(dirHistory, `_chat_history_${channelName}.csv`);
   const bom = Buffer.from([0xef, 0xbb, 0xbf]);
   await fs.promises.writeFile(csvPath, bom);
@@ -64,6 +64,7 @@ async function main(channelId: string) {
     append: true,
   });
 
+  // チャット履歴のエクスポート
   const records = await Promise.all(
     messages
       ?.filter((message) => (message.text && message.text.length > 0) || (message.files && message.files.length > 0))
@@ -80,12 +81,12 @@ async function main(channelId: string) {
     console.error('エクスポート対象メッセージなし');
   } else {
     await csvWriter.writeRecords(records);
-    console.log(`チャット履歴エクスポート完了: ${csvPath}`);
+    console.info(`チャット履歴エクスポート完了: ${csvPath}`);
   }
 
   // ファイルのダウンロード
   if (!files || files?.length === 0) {
-    console.log('ダウンロード対象ファイルなし');
+    console.info('ダウンロード対象ファイルなし');
     return;
   }
   let unknownFileCount: number = 1;
@@ -114,7 +115,7 @@ async function main(channelId: string) {
       }
 
       await fs.promises.writeFile(filePath, Buffer.from(await response.arrayBuffer()));
-      console.log(`ダウンロード成功: ${file.name}`);
+      console.info(`ダウンロード成功: ${file.name}`);
     } catch (error) {
       console.error(`ダウンロード失敗: ${file.name} | ${error}`);
     }
