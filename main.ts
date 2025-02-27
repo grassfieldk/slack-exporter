@@ -26,8 +26,8 @@ async function main(channelId: string) {
   const files = fileList.files?.filter((file) => file.name !== 'To-do_list') || [];
 
   // エクスポートディレクトリ作成
-  const dirHistory = path.join(__dirname, '..', '_downloads', channelName);
-  const dirFiles = path.join(__dirname, '..', '_downloads', channelName);
+  const dirHistory = path.join(__dirname, '_downloads', channelName);
+  const dirFiles = path.join(__dirname, '_downloads', channelName);
   await fs.promises.mkdir(dirHistory, { recursive: true });
   await fs.promises.mkdir(dirFiles, { recursive: true });
 
