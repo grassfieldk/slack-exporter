@@ -68,7 +68,8 @@ async function main(channelId: string) {
   const records = [];
 
   // メッセージとスレッドの処理
-  for (const message of messages || []) {
+  const sortedMessages = (messages || []).sort((a, b) => Number(a.ts) - Number(b.ts));
+  for (const message of sortedMessages) {
     // 親メッセージの処理
     if ((message.text && message.text.length > 0) || (message.files && message.files.length > 0)) {
       records.push({
