@@ -51,7 +51,7 @@ async function main(channelId: string) {
       timestamp: new Date(Number(message.ts) * 1000).toLocaleString('ja-JP'),
       user: message.user || '[ユーザー名取得失敗]',
       text: message.files?.length
-        ? `[ファイル添付] ${message.text || ''}`.trim()
+        ? `[file: ${message.files.map((file) => file.name).join(', ')}] ${message.text || ''}`.trim()
         : message.text || '[メッセージ内容取得失敗]',
     }));
 
