@@ -19,11 +19,30 @@ async function main(channelId: string) {
   const chatInfo = await web.conversations.info({ channel: channelId });
   const chatHistory = await web.conversations.history({ channel: channelId });
   const fileList = await web.files.list({ channel: channelId });
+  const channel = chatInfo.channel;
+
+  // チャンネルタイプ判定
+  const type = (() => {
+    switch (true) {
+      case channel?.is_channel:
+        return 'public_channel';
+      case channel?.is_group:
+        return 'private_channel';
+      case channel?.is_im:
+        return 'direct_message';
+      case channel?.is_mpim:
+        return 'group_dm';
+      default:
+        console.error('チャンネルタイプが不正です');
+        process.exit(1);
+    }
+  })();
 
   // データ抽出
-  const channelName = chatInfo.channel?.name || channelId;
+  const channelName = await getChannelName(chatInfo.channel, type, channelId);
   const messages = chatHistory.messages;
   const files = fileList.files?.filter((file) => file.name !== 'To-do_list') || [];
+  console.info(`${type}: ${channelName} のデータをエクスポートします`);
 
   // エクスポートディレクトリ作成
   const dirHistory = path.join(__dirname, '_downloads', channelName);
@@ -45,15 +64,17 @@ async function main(channelId: string) {
     append: true,
   });
 
-  const records = messages
-    ?.filter((message) => (message.text && message.text.length > 0) || (message.files && message.files.length > 0))
-    ?.map((message) => ({
-      timestamp: new Date(Number(message.ts) * 1000).toLocaleString('ja-JP'),
-      user: message.user || '[ユーザー名取得失敗]',
-      text: message.files?.length
-        ? `[file: ${message.files.map((file) => file.name).join(', ')}] ${message.text || ''}`.trim()
-        : message.text || '[メッセージ内容取得失敗]',
-    }));
+  const records = await Promise.all(
+    messages
+      ?.filter((message) => (message.text && message.text.length > 0) || (message.files && message.files.length > 0))
+      ?.map(async (message) => ({
+        timestamp: new Date(Number(message.ts) * 1000).toLocaleString('ja-JP'),
+        user: message.user ? await getUserName(message.user) : '[ユーザー名取得失敗]',
+        text: message.files?.length
+          ? `[file: ${message.files.map((file) => file.name).join(', ')}] ${message.text || ''}`.trim()
+          : message.text || '[メッセージ内容取得失敗]',
+      })) || []
+  );
 
   if (!records) {
     console.error('エクスポート対象メッセージなし');
@@ -97,5 +118,41 @@ async function main(channelId: string) {
     } catch (error) {
       console.error(`ダウンロード失敗: ${file.name} | ${error}`);
     }
+  }
+}
+
+async function getChannelName(channel: any, type: string, channelId: string): Promise<string> {
+  switch (type) {
+    case 'public_channel':
+    case 'private_channel':
+      return channel?.name || channelId;
+
+    case 'direct_message':
+      return getUserName(channel.user);
+
+    case 'group_dm':
+      const members = channel?.members || [];
+      if (members.length > 0) {
+        const userNames = await Promise.all(
+          members.map(async (memberId: string) => {
+            getUserName(memberId);
+          })
+        );
+        return userNames.join('、');
+      }
+      return channelId;
+
+    default:
+      return channelId;
+  }
+}
+
+async function getUserName(userId: string): Promise<string> {
+  try {
+    const userInfo = await web.users.info({ user: userId });
+    return userInfo.user?.real_name || userInfo.user?.name || userId;
+  } catch (error) {
+    console.error(`ユーザー情報取得失敗: ${userId}`);
+    return userId;
   }
 }
