@@ -65,19 +65,45 @@ async function main(channelId: string) {
   });
 
   // チャット履歴のエクスポート
-  const records = await Promise.all(
-    messages
-      ?.filter((message) => (message.text && message.text.length > 0) || (message.files && message.files.length > 0))
-      ?.map(async (message) => ({
+  const records = [];
+
+  // メッセージとスレッドの処理
+  for (const message of messages || []) {
+    // 親メッセージの処理
+    if ((message.text && message.text.length > 0) || (message.files && message.files.length > 0)) {
+      records.push({
         timestamp: new Date(Number(message.ts) * 1000).toLocaleString('ja-JP'),
         user: message.user ? await getUserName(message.user) : '[ユーザー名取得失敗]',
         text: message.files?.length
           ? `[file: ${message.files.map((file) => file.name).join(', ')}] ${message.text || ''}`.trim()
           : message.text || '[メッセージ内容取得失敗]',
-      })) || []
-  );
+      });
+    }
 
-  if (!records) {
+    // スレッド内のリプライを取得
+    if (message.thread_ts) {
+      const replies = await web.conversations.replies({
+        channel: channelId,
+        ts: message.thread_ts,
+      });
+
+      // スレッド内のメッセージを処理（親メッセージを除く）
+      const filteredMessages = replies.messages?.filter((reply) => reply.ts !== message.thread_ts) || [];
+      for (const reply of replies.messages || []) {
+        if (reply.ts !== message.thread_ts) {
+          records.push({
+            timestamp: new Date(Number(reply.ts) * 1000).toLocaleString('ja-JP'),
+            user: reply.user ? await getUserName(reply.user) : '[ユーザー名取得失敗]',
+            text: `${reply.ts === filteredMessages[filteredMessages.length - 1].ts ? '└' : '├'} ${
+              reply.text || '[メッセージ内容取得失敗]'
+            }`,
+          });
+        }
+      }
+    }
+  }
+
+  if (records.length === 0) {
     console.error('エクスポート対象メッセージなし');
   } else {
     await csvWriter.writeRecords(records);
