@@ -23,37 +23,36 @@ async function main(channelId: string) {
   // データ抽出
   const channelName = chatInfo.channel?.name || channelId;
   const messages = chatHistory.messages;
-  const files = fileList.files?.filter(file => file.name !== 'To-do_list') || [];
+  const files = fileList.files?.filter((file) => file.name !== 'To-do_list') || [];
 
   // エクスポートディレクトリ作成
-  const dirHistory = path.join(__dirname, "..", "_downloads", channelName);
-  const dirFiles = path.join(__dirname, "..", "_downloads", channelName);
+  const dirHistory = path.join(__dirname, '..', '_downloads', channelName);
+  const dirFiles = path.join(__dirname, '..', '_downloads', channelName);
   await fs.promises.mkdir(dirHistory, { recursive: true });
   await fs.promises.mkdir(dirFiles, { recursive: true });
 
   // チャット履歴のエクスポート
   const csvPath = path.join(dirHistory, `_chat_history_${channelName}.csv`);
-  const bom = Buffer.from([0xEF, 0xBB, 0xBF]);
+  const bom = Buffer.from([0xef, 0xbb, 0xbf]);
   await fs.promises.writeFile(csvPath, bom);
   const csvWriter = createObjectCsvWriter({
     path: csvPath,
     header: [
       { id: 'timestamp', title: '時刻' },
       { id: 'user', title: '送信者' },
-      { id: 'text', title: 'メッセージ' }
+      { id: 'text', title: 'メッセージ' },
     ],
-    append: true
+    append: true,
   });
 
   const records = messages
-    ?.filter(message => (
-      message.text && message.text.length > 0) || (message.files && message.files.length > 0))
-    ?.map(message => ({
+    ?.filter((message) => (message.text && message.text.length > 0) || (message.files && message.files.length > 0))
+    ?.map((message) => ({
       timestamp: new Date(Number(message.ts) * 1000).toLocaleString('ja-JP'),
       user: message.user || '[ユーザー名取得失敗]',
       text: message.files?.length
         ? `[ファイル添付] ${message.text || ''}`.trim()
-        : message.text || '[メッセージ内容取得失敗]'
+        : message.text || '[メッセージ内容取得失敗]',
     }));
 
   if (!records) {
@@ -84,8 +83,8 @@ async function main(channelId: string) {
     try {
       const response = await fetch(file.url_private, {
         headers: {
-          'Authorization': `Bearer ${userOauthToken}`
-        }
+          Authorization: `Bearer ${userOauthToken}`,
+        },
       });
 
       if (!response.ok) {
@@ -95,10 +94,8 @@ async function main(channelId: string) {
 
       await fs.promises.writeFile(filePath, Buffer.from(await response.arrayBuffer()));
       console.log(`ダウンロード成功: ${file.name}`);
-
     } catch (error) {
       console.error(`ダウンロード失敗: ${file.name} | ${error}`);
     }
   }
 }
-
