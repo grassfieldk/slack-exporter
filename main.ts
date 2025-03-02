@@ -218,10 +218,18 @@ async function getChannelName(channel: any, type: string, channelId: string): Pr
   }
 }
 
+const userCache = new Map<string, string>();
 async function getUserName(userId: string): Promise<string> {
+  if (userCache.has(userId)) {
+    return userCache.get(userId)!;
+  }
+
   try {
     const userInfo = await web.users.info({ user: userId });
-    return userInfo.user?.real_name || userInfo.user?.name || userId;
+    const userName = userInfo.user?.real_name || userInfo.user?.name || userId;
+    userCache.set(userId, userName);
+
+    return userName;
   } catch (error) {
     console.error(`ユーザー情報取得失敗: ${userId}`);
     return userId;
