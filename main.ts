@@ -76,7 +76,7 @@ async function main(channelId: string) {
         timestamp: new Date(Number(message.ts) * 1000).toLocaleString('ja-JP'),
         user: message.user ? await getUserName(message.user) : '[ユーザー名取得失敗]',
         text: message.files?.length
-          ? `[file: ${message.files.map((file) => file.name).join(', ')}] ${message.text || ''}`.trim()
+          ? `[file: ${message.files.map((file: any) => file.name).join(', ')}] ${message.text || ''}`.trim()
           : message.text || '[メッセージ内容取得失敗]',
       });
     }
@@ -116,9 +116,17 @@ async function main(channelId: string) {
     console.info('ダウンロード対象ファイルなし');
     return;
   }
-  let unknownFileCount: number = 1;
+
+  console.info('ファイルのダウンロードを開始します');
+
+  let fileCount = 1;
+  let unknownFileCount = 1;
   for (const file of files) {
-    const filePath = path.join(dirFiles, file.name || `unknown_file_${unknownFileCount++}`);
+    const prefix = fileCount.toString().padStart(4, '0');
+    const fileName = file.name ? `${prefix}_${file.name}` : `${prefix}_unknown_file_${unknownFileCount++}`;
+
+    const filePath = path.join(dirFiles, fileName);
+    fileCount++;
 
     if (!file.id) {
       console.error(`ダウンロード失敗: ${file.name} | ファイル ID 不正`);
