@@ -17,7 +17,6 @@ main(channelId);
 async function main(channelId: string) {
   // チャンネル情報取得
   const chatInfo = await web.conversations.info({ channel: channelId });
-  const chatHistory = await web.conversations.history({ channel: channelId });
   const fileList = await web.files.list({ channel: channelId });
   const channel = chatInfo.channel;
 
@@ -38,11 +37,32 @@ async function main(channelId: string) {
     }
   })();
 
-  // データ抽出
+  // チャンネル名取得
   const channelName = await getChannelName(chatInfo.channel, type, channelId);
-  const messages = chatHistory.messages;
-  const files = fileList.files?.filter((file) => file.name !== 'To-do_list') || [];
+
+  // メッセージ履歴取得
   console.info(`${type}: ${channelName} のデータをエクスポートします`);
+  const messages: any[] = [];
+
+  console.info(`メッセージ情報取得中`);
+  let pageCount = 0;
+  let cursor;
+  do {
+    const response = await web.conversations.history({
+      channel: channelId,
+      limit: 500,
+      cursor: cursor,
+    });
+
+    if (response.messages?.length === 0) return;
+
+    messages.push(...(response.messages || []));
+    cursor = response.response_metadata?.next_cursor;
+
+    console.info(`${++pageCount} ページ目（${response.messages?.length}）の取得完了`);
+  } while (cursor);
+
+  const files = fileList.files?.filter((file) => file.name !== 'To-do_list') || [];
 
   // エクスポートディレクトリ作成
   const dirHistory = path.join(__dirname, '_downloads', channelName);
