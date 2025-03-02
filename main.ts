@@ -1,8 +1,9 @@
 import { WebClient } from '@slack/web-api';
 import { createObjectCsvWriter } from 'csv-writer';
+import 'dotenv/config';
 import * as fs from 'fs';
 import * as path from 'path';
-import 'dotenv/config';
+import * as readline from 'readline';
 
 const channelId = process.env.CHANNEL_ID;
 const userOauthToken = process.env.USER_OAUTH_TOKEN;
@@ -62,7 +63,12 @@ async function main(channelId: string) {
     console.info(`${++pageCount} ページ目（${response.messages?.length}）の取得完了`);
   } while (cursor);
 
+  console.info(`${messages.length} 件のメッセージを取得`);
+
+  // データ抽出
+  console.info(`ファイル情報取得中`);
   const files = fileList.files?.filter((file) => file.name !== 'To-do_list') || [];
+  console.info(`${files.length} 件のファイルを取得`);
 
   // エクスポートディレクトリ作成
   const dirHistory = path.join(__dirname, '_downloads', channelName);
@@ -83,12 +89,17 @@ async function main(channelId: string) {
     ],
     append: true,
   });
+  console.info('出力先フォルダ作成完了');
 
   // チャット履歴のエクスポート
   const records = [];
 
   // メッセージとスレッドの処理
+  console.info(`メッセージをエクスポートします`);
+
   const sortedMessages = (messages || []).sort((a, b) => Number(a.ts) - Number(b.ts));
+  let numOfThreads = sortedMessages.filter((message) => message.thread_ts).length;
+  let threadCount = 1;
   for (const message of sortedMessages) {
     // 親メッセージの処理
     if ((message.text && message.text.length > 0) || (message.files && message.files.length > 0)) {
@@ -101,14 +112,18 @@ async function main(channelId: string) {
       });
     }
 
-    // スレッド内のリプライを取得
+    // スレッドメッセージの処理
     if (message.thread_ts) {
+      if (threadCount >= 1) {
+        readline.moveCursor(process.stdout, 0, -1);
+      }
+      console.info(`スレッドメッセージの取得（${threadCount++} / ${numOfThreads}）`);
+
       const replies = await web.conversations.replies({
         channel: channelId,
         ts: message.thread_ts,
       });
 
-      // スレッド内のメッセージを処理（親メッセージを除く）
       const filteredMessages = replies.messages?.filter((reply) => reply.ts !== message.thread_ts) || [];
       for (const reply of replies.messages || []) {
         if (reply.ts !== message.thread_ts) {
