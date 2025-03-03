@@ -9,6 +9,8 @@ const channelId = process.env.CHANNEL_ID;
 const userOauthToken = process.env.USER_OAUTH_TOKEN;
 const web = new WebClient(userOauthToken);
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 if (!channelId || !userOauthToken) {
   console.error('.env ファイルを確認してください');
   process.exit(1);
@@ -98,8 +100,14 @@ async function main(channelId: string) {
   console.info(`メッセージをエクスポートします`);
 
   const sortedMessages = (messages || []).sort((a, b) => Number(a.ts) - Number(b.ts));
-  let numOfThreads = sortedMessages.filter((message) => message.thread_ts).length;
+
+  const processedThreads = new Set<string>();
+  const uniqueThreads = new Set(
+    sortedMessages.filter((message) => message.thread_ts).map((message) => message.thread_ts)
+  );
+  const numOfThreads = uniqueThreads.size;
   let threadCount = 1;
+
   for (const message of sortedMessages) {
     // 親メッセージの処理
     if ((message.text && message.text.length > 0) || (message.files && message.files.length > 0)) {
@@ -113,16 +121,20 @@ async function main(channelId: string) {
     }
 
     // スレッドメッセージの処理
-    if (message.thread_ts) {
-      if (threadCount >= 1) {
+    if (message.thread_ts && !processedThreads.has(message.thread_ts)) {
+      if (threadCount > 1) {
         readline.moveCursor(process.stdout, 0, -1);
       }
       console.info(`スレッドメッセージの取得（${threadCount++} / ${numOfThreads}）`);
+
+      await sleep(500);
 
       const replies = await web.conversations.replies({
         channel: channelId,
         ts: message.thread_ts,
       });
+
+      processedThreads.add(message.thread_ts);
 
       const filteredMessages = replies.messages?.filter((reply) => reply.ts !== message.thread_ts) || [];
       for (const reply of replies.messages || []) {
